@@ -1,0 +1,39 @@
+project:
+  type: website
+
+website:
+  title: "2023 DSAN Scholarship Competition"
+  page-navigation: true
+  navbar:
+      logo: ../images/gu.png
+      background: "#EEE2DC"
+      right:
+      - icon: github
+        href: https://github.com/anly503/spring2023-project-team-11
+        aria-label: GitHub
+  # sidebar:
+  #   style: "docked"
+  #   background: "#D6D2C4"
+  #   width: 240px 
+  #   align: left
+  #   title: Pages
+  #   collapse-below: lg
+    # contents:
+    #   - href: index.qmd
+    #   - href: eda.qmd
+    #   - href: net_income.qmd
+    #   - href: time_series.qmd
+    #   - href: conclusion.qmd
+
+format:
+  html:
+    theme: lux
+    css: styles.css
+    toc: true
+    embed-resources: true
+    self-contained: true
+    callout-appearance: simple
+    page-layout: article
+
+
+

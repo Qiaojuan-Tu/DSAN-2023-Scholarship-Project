@@ -1,0 +1,157 @@
+---
+title: "Navigating the Data Job Market: An Analysis of Skills and Degree Requirements"
+
+title-level: 2
+format:
+  html:
+    theme: cosmo
+    toc: true
+    embed-resources: true
+    self-contained: true
+    link-external-icon: true
+    link-external-newwindow: true
+
+execute: 
+  echo: False
+---
+<!-- # Navigating the Data Job Market: An Analysis of Skills and Degree Requirements  -->
+***- A Closer Look at Data Job Postings in April 2023***
+
+![](../images/job.jpeg)
+<small>[Picture link](https://www.brixton.net/the-state-of-hiring-how-long-is-it-taking-to-hire-in-the-current-job-market?ref=&id=&recruiter=&title=)</small>
+
+The job market for data-related positions has seen a steady growth in recent years, fueled by the explosion of big data and artificial intelligence. However, for new graduates who are aspiring to enter this field, the prospect of securing a job can be daunting, especially during a time when many tech companies are laying off employees. This raises questions about the current state of the data job market and the challenges that new graduates may face in finding employment. In this project, we will explore the difficulties of finding data-related jobs in the current job market and examine where recent graduates stand in the face of competition and limited opportunities.
+
+<!-- Data-related jobs typically require a combination of technical and analytical skills, as well as industry-specific knowledge, which can make it difficult for new graduates to compete with more experienced candidates. Additionally, the field is highly competitive, with many candidates vying for a limited number of job openings. As such, new graduates may face significant obstacles in their job search, including lack of experience, limited industry contacts, and fierce competition. Despite these challenges, with the right approach and mindset, it is possible for new graduates to succeed in finding a rewarding career in the data-related job market. -->
+
+## Where are the jobs? And How many?
+```{python}
+import plotly.graph_objects as go
+import pandas as pd
+import altair as alt
+from altair import datum
+
+```
+
+```{python}
+data = pd.read_csv("../data/cleaned/map.csv")
+data = data.drop(["Unnamed: 0"], axis = 1)
+counts = data['location'].value_counts().sort_index()
+new_df = pd.DataFrame({'location': counts.index, 'count': counts.values})
+merged_df = pd.merge(data,new_df, on='location').drop_duplicates()
+```
+　
+```{python}
+limits = [(0,2),(3,10),(11,20),(20,50),(50,200)]
+colors = ["rgb(237, 43, 42)","rgb(25, 167, 206)","rgb(97, 113, 67)","rgb(113, 73, 198)","rgb(255, 217, 90)"]
+scale = 5000
+merged_df["text"] = merged_df["location"] + '<br>Number of Jobs:' + merged_df['count'].astype(str)
+
+fig = go.Figure()
+
+for i in range(len(limits)):
+    lim = limits[i]
+    df_sub = merged_df[(merged_df['count'] >= lim[0]) & (merged_df['count'] < lim[1])]
+    fig.add_trace(go.Scattergeo(
+        locationmode = 'USA-states',
+        lon = df_sub['longitude'],
+        lat = df_sub['latitude'],
+        text = df_sub['text'],
+        marker = dict(
+            size = df_sub['count']*20,
+            color = colors[i],
+            line_color='rgb(40,40,40)',
+            line_width=0.5,
+            sizemode = 'area'
+        ),
+        name = '{0} - {1}'.format(lim[0],lim[1]))),
+
+fig.update_layout(
+        title_text = 'Data-Related Job Searches in the United States: April 2023',
+        showlegend = True,
+        geo = dict(
+            scope = 'usa',
+            landcolor = 'rgb(235, 218, 218)',
+        )
+    )
+
+fig.update_layout(
+    legend=dict(
+        title=dict(
+            text="Job Count Range",
+            font=dict(
+                size=14
+            )
+        )
+    )
+)
+fig.show()
+
+```
+
+## What skills do you need?
+
+```{python}
+data = pd.read_csv("../data/cleaned/tools.csv")
+# grouped = data.groupby('title_category')
+grouped = data.groupby('title_category').agg({'sql_count': 'sum', 'python_count': 'sum', 'R_count':'sum','java_count':'sum','linux_count':'sum','sas_count':'sum'})
+grouped = grouped.reset_index()
+grouped['list_col'] = grouped.iloc[:, 1:7].apply(lambda x: x.tolist(), axis=1)
+grouped_new = grouped.iloc[[4,5,6,12]].reset_index()
+grouped_new = grouped_new.drop("index", axis = 1)
+categories = ['SQL', 'Python', 'R', 'Java', 'Linux','SAS']
+
+fig = go.Figure()
+
+for i in range(len(grouped_new)):
+      fig.add_trace(go.Scatterpolar(
+            r=grouped_new.iloc[i][7],
+            theta=categories,
+            fill='toself',
+            name= grouped_new.iloc[i][0]
+      ))
+fig.update_layout(template = 'ggplot2')
+
+
+fig.show()
+
+```
+
+## Do you qualify?
+
+```{python}
+data = pd.read_csv("../data/cleaned/degree.csv")
+
+selection = alt.selection_single(fields=['title_category'], name='Random')
+color = alt.condition(selection,
+                      alt.value('lightcoral'),
+                      alt.value('lightgray'))
+
+bars = alt.Chart(data).mark_bar().encode(
+    y=alt.X('title_category:N', axis=alt.Axis(title='Job Title'), sort='-x'),
+    x=alt.Y('count():Q', axis=alt.Axis(title='Count')),
+    # color=alt.Color('title_category:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(title='Degree'))
+    color=color
+).properties(
+    title='Distribution of Jobs by Title'
+).add_selection(selection)
+
+# ----- pie
+pie_chart = alt.Chart(data).transform_filter(
+    alt.FieldOneOfPredicate(field='Degree Requirement', oneOf=['Master', 'PhD', 'Bachelor', 'Master,Bachelor',
+                                                               'PhD,Master,Bachelor', 'PhD,Master', 'HighSchool', 'PhD,Bachelor',
+                                                               'PhD,Master,Bachelor,HighSchool', 'Master,Bachelor,HighSchool'])
+).mark_arc().encode(
+    theta="count(Degree Requirement):Q",
+    color=alt.Color('Degree Requirement:N', scale=alt.Scale(scheme='tableau10')),
+    tooltip=["Degree Requirement:N", "count(Degree Requirement):Q"]
+).transform_filter(selection).add_selection(selection).properties(
+    title = "Distribution of Degree Requirements"
+)
+
+
+# chart = alt.hconcat(bars, pie_chart)
+# chart
+
+bars & pie_chart
+```
